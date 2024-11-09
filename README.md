@@ -77,8 +77,7 @@ dfx start
 dfx deploy
 
 # For getting the right Codespace links, you can run this script
-./scripts/canister_urls.py
-```
+dfx```
 
 Once the job completes, your application will be available at the links provided (be aware of copying the query params to the Codespace machine url!).
 
