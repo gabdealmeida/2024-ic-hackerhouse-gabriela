@@ -10,7 +10,8 @@ img {
   margin: auto;
 }
 
-h1, form {
+h1,
+form {
   display: flex;
   justify-content: center;
   gap: 0.5em;
@@ -44,4 +45,17 @@ button[type="submit"] {
 
 .response:empty {
   display: none;
+}
+
+.main-title {
+  text-align: center;
+  margin-bottom: 22px;
+}
+
+.send-button {
+  margin: 0px 0px 0px 0px !important;
+}
+
+.form-label {
+  margin-top: 20px;
 }

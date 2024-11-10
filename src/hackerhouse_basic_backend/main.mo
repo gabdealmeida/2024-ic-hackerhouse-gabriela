@@ -10,6 +10,8 @@ import Map "mo:map/Map";
 import { phash; nhash } "mo:map/Map";
 import Nat "mo:base/Nat";
 import Vector "mo:vector";
+import JSON "mo:serde/JSON";
+import Float "mo:base/Float";
 
 actor {
     stable var autoIndex = 0;
@@ -74,7 +76,7 @@ actor {
         return #ok({ id = 123; results = ["fake result"] });
     };
 
-    public func outcall_ai_model_for_sentiment_analysis(paragraph : Text) : async Result.Result<{ paragraph : Text; result : Text }, Text> {
+    public func outcall_ai_model_for_sentiment_analysis(paragraph : Text) : async Result.Result<{ paragraph : Text; result : Text; maxScore : Float; sentimentRes : Text }, Text> {
         let host = "api-inference.huggingface.co";
         let path = "/models/cardiffnlp/twitter-roberta-base-sentiment-latest";
 
@@ -92,11 +94,42 @@ actor {
 
         // TODO
         // Install "serde" package and parse JSON
+        let blob = switch (JSON.fromText(text_response, null)) {
+            case (#ok(b)) { b };
+            case (_) { return #err("Error decoding JSON: " # text_response) };
+        };
+
+        let results : ?[[{ label_ : Text; score : Float }]] = from_candid (blob);
+        let parsed_results = switch (results) {
+            case (null) { return #err("Error parsing JSON: " # text_response) };
+            case (?x) { x[0] };
+        };
+
+        var max_score = 0.0;
+        var sentiment_res = "Not recognized";
+
         // calculate highest sentiment and return it as a result
+        if (parsed_results.size() > 0) {
+
+            // initialize with the first score
+            max_score := parsed_results[0].score;
+            sentiment_res := parsed_results[0].label_;
+
+            for (result in parsed_results.vals()) {
+                if (result.score > max_score) {
+                    max_score := result.score; // update the highest score
+                    sentiment_res := result.label_;
+                };
+            };
+
+            Debug.print("Highest score: " # Float.toText(max_score));
+        };
 
         return #ok({
             paragraph = paragraph;
             result = text_response;
+            maxScore = max_score;
+            sentimentRes = sentiment_res;
         });
     };
 
@@ -161,7 +194,7 @@ actor {
         let http_request : Types.HttpRequestArgs = {
             url = url;
             max_response_bytes = null; //optional for request
-            headers = request_headers;
+            headers = merged_headers;
             // note: type of `body` is ?[Nat8] so it is passed here as "?request_body_as_nat8" instead of "request_body_as_nat8"
             body = ?request_body_as_nat8;
             method = #post;
